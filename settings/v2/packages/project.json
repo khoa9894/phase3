@@ -1,0 +1,26 @@
+{
+  "__version__": "1.0.6",
+  "general": {
+    "designResolution": {
+      "width": 768,
+      "height": 1366,
+      "fitHeight": false,
+      "fitWidth": true
+    }
+  },
+  "sorting-layer": {
+    "layers": [
+      {
+        "id": 1,
+        "name": "1",
+        "value": -1
+      },
+      {
+        "id": 0,
+        "name": "default",
+        "value": 0
+      }
+    ],
+    "increaseId": 2
+  }
+}
