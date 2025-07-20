@@ -2,6 +2,7 @@ import { _decorator, Component, input, Input, EventTouch, Camera, geometry } fro
 const { ccclass, property } = _decorator
 import { Tile } from './Tile'
 import { Board } from './Board'
+import { Milestone } from './Milestone'
 @ccclass('GameManager')
 export default class GameManager extends Component {
     private canMove = false
@@ -14,7 +15,6 @@ export default class GameManager extends Component {
 private currentHintTiles: Tile[] = [];
     @property(Board)
     private board: Board | null = null
-
     __preload(): void {
         if (this.board === null) throw new Error('Board component is not set')
     }
@@ -119,7 +119,9 @@ private clearHint(): void {
 
     private async processMatches(): Promise<void> {
     if (this.isProcessingMatches) return;
-
+    if(this.board?.getMile()?.getHi()){
+         await this.board!.shuffle()
+    }
     const matches = this.board!.getMatches();
 
     if (matches.length > 0) {

@@ -40,7 +40,9 @@ export class Milestone extends Component {
         console.log('Milestone completed!');
         this.playConfettiEffect();
     }
-    
+    public getHi():boolean{
+        return this.currentScore >= this.targetScore
+    }
     private createPool() {
         for(let i = 0; i < 20; i++) {
             const randomTileType: string =

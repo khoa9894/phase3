@@ -244,6 +244,9 @@ export class Board extends Component {
             this.TilePool!.Deactivate(tile);
         }
     }
+    public getMile():Milestone|undefined{
+       if(this.milestone) return this.milestone;
+    }
     private async handleSpecialCandy(matchResult: MatchResult): Promise<void> {
     console.log('Special candy Effect activated!');
     
