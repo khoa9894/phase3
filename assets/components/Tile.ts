@@ -9,7 +9,7 @@ export class Tile extends Component {
     private sprite: Sprite | null = null
     private pulseTween: Tween<any> | null = null
     private vanishTween: Tween<any> | null = null
-
+    private lastType:string=''
     private isSelected: boolean = false
 
     private tileType: string = GameConfig.CandyTypes[0]
@@ -22,7 +22,7 @@ export class Tile extends Component {
     public start(): void {
         this.node.on(Input.EventType.TOUCH_START, this.onTouchStart, this)
     }
-
+    
     startPulseEffect(): void {
         this.stopPulseEffect()
         
