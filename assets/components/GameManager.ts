@@ -1,4 +1,5 @@
-import { _decorator, Component, input, Input, EventTouch, Camera, geometry } from 'cc'
+import { end } from './end';
+import { _decorator, Component, input, Input, EventTouch, Camera, geometry, Prefab, instantiate, Node,Label } from 'cc'
 const { ccclass, property } = _decorator
 import { Tile } from './Tile'
 import { Board } from './Board'
@@ -6,15 +7,55 @@ import { Milestone } from './Milestone'
 @ccclass('GameManager')
 export default class GameManager extends Component {
     private canMove = false
+private moveRemaining = 30;
     private firstSelectedTile: Tile | undefined = undefined
     private secondSelectedTile: Tile | undefined = undefined
     private isProcessingMatches = false;
     private hintTimer: number | null = null;
+    private isPaused = false;
+    @property(Label)
+    private scoreLabel: Label | null = null;
+    
+    @property(Label)
+    private movesLabel: Label | null = null;
+    @property(end)
+    private end:end|null=null
+    
+public pauseGame(): void {
+        this.isPaused = true;
+        this.canMove = false;
+        
+        if (this.hintTimer !== null) {
+            clearTimeout(this.hintTimer);
+            this.hintTimer = null;
+        }
+        
+        this.clearHint();
+        
   
-
+        
+        console.log('Game paused');
+    }
+      public resumeGame(): void {
+        this.isPaused = false;
+        this.canMove = !this.isProcessingMatches; 
+        
+        this.resetHintTimer();
+        
+   
+        
+        console.log('Game resumed');
+    }
+    
+    public getIsPaused(): boolean {
+        return this.isPaused;
+    }
 private currentHintTiles: Tile[] = [];
+    @property(Prefab)
+ private coffPrelab: Prefab | null = null
     @property(Board)
     private board: Board | null = null
+    
     __preload(): void {
         if (this.board === null) throw new Error('Board component is not set')
     }
@@ -23,8 +64,74 @@ private currentHintTiles: Tile[] = [];
         this.initializeGame()
         
     }
-
+    public async newGame(): Promise<void> {
+     console.log('Starting new game...');
+    
+    // this.pauseGame();
+    
+    // this.clearSelection();
+    // this.clearHint();
+    
+    // this.isProcessingMatches = false;
+    // this.canMove = false;
+    
+    // if (this.hintTimer !== null) {
+    //     clearTimeout(this.hintTimer);
+    //     this.hintTimer = null;
+    // }
+    this.moveRemaining = 30;
+    if (this.board) {
+        this.board.clearBoard(); 
+        
+        this.board.getMile()?.resetMilestone();
+    }
+    this.moveRemaining=30
+         this.canMove = true
+        this.firstSelectedTile = undefined
+        this.secondSelectedTile = undefined
+        this.isPaused=false
+        this.board!.createBoard()
+        this.board!.getMile()?.resetMilestone()
+        this.board!.setTileClickCallback((tile) => this.onTileClick(tile))
+        this.updateUI()
+        await this.processMatches()
+    
+ 
+}
+    private createCoff(): Node | null {
+    if (!this.coffPrelab) {
+        console.error('Confetti prefab is not set');
+        return null;
+    }
+    const confettiNode = instantiate(this.coffPrelab) as Node;
+    if (confettiNode === null) {
+        console.error('Failed to instantiate confetti prefab'); 
+        throw new Error('Failed to instantiate confetti prefab'); 
+    }
+    
+    this.node.addChild(confettiNode);
+    confettiNode.active = true;
+    
+    return confettiNode;
+}
+private updateUI(): void {
+    if (this.scoreLabel && this.board) {
+        const currentScore = this.board.getMile()?.getCurrentScore() || 0;
+        this.scoreLabel.string = `Score: ${currentScore}`;
+    }
+    
+    if (this.movesLabel) {
+        this.movesLabel.string = `Moves: ${this.moveRemaining}`;
+    }
+    
+    console.log(`UI Updated - Score: ${this.board?.getMile()?.getCurrentScore()}, Moves: ${this.moveRemaining}`);
+}
+hihi(){
+    this.end?.hideWindow()
+    this.newGame()
+}
     private async initializeGame(): Promise<void> {
+        this.moveRemaining = 30;
         this.canMove = true
         this.firstSelectedTile = undefined
         this.secondSelectedTile = undefined
@@ -36,7 +143,7 @@ private currentHintTiles: Tile[] = [];
     }
 
     private onTileClick(tile: Tile): void {
-    if (!this.canMove) return;
+    if (!this.canMove||this.isPaused) return;
 
     this.clearHint();
     this.resetHintTimer();
@@ -52,6 +159,7 @@ private currentHintTiles: Tile[] = [];
     }
 }
     private resetHintTimer(): void {
+        if (this.isPaused) return; 
     if (this.hintTimer !== null) {
         clearTimeout(this.hintTimer);
     }
@@ -64,7 +172,7 @@ private currentHintTiles: Tile[] = [];
 }
 
 private async showHint(): Promise<void> {
-    if (!this.canMove || this.isProcessingMatches) return;
+    if (!this.canMove || this.isProcessingMatches||this.isPaused) return;
     
     const hint = this.board!.getHint();
     if (hint) {
@@ -75,9 +183,11 @@ private async showHint(): Promise<void> {
         
         console.log('Hint: Swap these tiles for a match!');
     } else {
-        await this.board!.shuffle()
-        this.processMatches()
 
+        await this.board!.shuffle()
+
+        this.processMatches()
+       
     }
 }
 
@@ -106,23 +216,40 @@ private clearHint(): void {
 
     private swapTiles(): void {
         if (!this.firstSelectedTile || !this.secondSelectedTile) return
-
+        
         const tile1 = this.firstSelectedTile
         const tile2 = this.secondSelectedTile
 
         tile1.stopPulseEffect()
 
         this.board!.swapTiles(tile1, tile2, () => {
-            this.processMatches()
+        this.moveRemaining--;
+         this.updateUI();
+        if (this.moveRemaining <= 0) {
+            this.handleGameOver();
+            return;
+        }
+            this.processMatches([tile1, tile2])
+                   
+
         })
     }
 
-    private async processMatches(): Promise<void> {
-    if (this.isProcessingMatches) return;
+    private async processMatches(swappedTiles?: Tile[]): Promise<void> {
+    if (this.isProcessingMatches || this.isPaused) return;
     if(this.board?.getMile()?.getHi()){
+                const confettiNode = this.createCoff();
+
          await this.board!.shuffle()
+          if (confettiNode) {
+            setTimeout(() => {
+                confettiNode.destroy();
+            }, 10); 
+        }
+         this.board.getMile()?.resetMilestone()
+
     }
-    const matches = this.board!.getMatches();
+    const matches = this.board!.getMatches(swappedTiles);
 
     if (matches.length > 0) {
         this.isProcessingMatches = true;
@@ -136,7 +263,8 @@ private clearHint(): void {
         this.clearSelection();
         
         await this.board!.removeTiles(matches);
-        
+            this.updateUI();
+
         try {
             await this.board!.dropAndFillTile();
             this.board!.setTileClickCallback((tile) => this.onTileClick(tile));
@@ -179,8 +307,41 @@ private clearHint(): void {
             this.canMove = true;
         }
     }
+
+}
+private handleGameOver(): void {
+    console.log('Game Over - No moves remaining!');
+    
+    this.canMove = false;
+    this.isPaused = true;
+    
+    this.clearHint();
+    if (this.hintTimer !== null) {
+        clearTimeout(this.hintTimer);
+        this.hintTimer = null;
+    }
+    
+    this.board!.clearBoard();
+    
+    const finalScore = this.getCurrentScore();
+    console.log(`Game ended with final score: ${finalScore}`);
+    
+    if (this.end) {
+        this.end.showWindow(finalScore);
+    } else {
+        console.error('End component is null!');
+    }
+    
+    this.updateUI();
 }
 
+public getMoveRemaining(): number {
+    return this.moveRemaining;
+}
+
+public getCurrentScore(): number {
+    return this.board?.getMile()?.getCurrentScore() || 0;
+}
     private isChocolateTile(tileType: string): boolean {
         return tileType === 'chocolate';
     }

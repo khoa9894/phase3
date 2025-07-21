@@ -5,6 +5,7 @@ interface MatchResult {
     type: 'match3' | 'match4' | 'match5' | 'matchL' | 'matchT' | 'special-row' | 'special-column'|'special-candy';
     direction: 'horizontal' | 'vertical' | 'cross';
     centerTile?: Tile; 
+   // tileCoordinate:{x:number,y:number}
     specialActivation?: {
         activatorTiles: Tile[];
         effectType: 'row' | 'column' | 'match5' | 'cross'|'candy';

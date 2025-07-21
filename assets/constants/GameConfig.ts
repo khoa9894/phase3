@@ -8,8 +8,8 @@ const GameConfig = {
         'green',
         'yellow',
         'purple',
-        'orange',
-        'red',  
+        // 'orange',
+        // 'red',  
     ],
     SpecialType:[
         'blue-x',

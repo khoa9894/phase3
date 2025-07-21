@@ -3,7 +3,7 @@ import { _decorator, Component, instantiate, Prefab, tween, Vec3, type Node } fr
 const { ccclass, property } = _decorator
 import GameConfig from '../constants/GameConfig'
 import { Tile } from './Tile'
-import { MatchResult, HintMove, Match,Movement } from '../constants/global'
+import { MatchResult, HintMove, Match, Movement } from '../constants/global'
 import { Milestone } from './Milestone'
 
 
@@ -11,11 +11,11 @@ import { Milestone } from './Milestone'
 @ccclass('Board')
 export class Board extends Component {
     private tileGrid: (Tile | undefined)[][] = []
-      @property(Milestone)
+    @property(Milestone)
     private milestone: Milestone | null = null;
     @property(TilePool)
     private TilePool: TilePool | null = null
-    
+
     __preload(): void {
         if (this.TilePool === null) throw new Error('TilePool is not set')
         console.log('Board __preload: All components are properly set')
@@ -31,7 +31,29 @@ export class Board extends Component {
             }
         }
     }
-
+public clearBoard(): void {
+    console.log('Clearing board...');
+    
+    for (let y = 0; y < GameConfig.GridHeight; y++) {
+        for (let x = 0; x < GameConfig.GridWidth; x++) {
+            const tile = this.tileGrid[y][x];
+            if (tile) {
+                this.TilePool?.Deactivate(tile);
+                this.tileGrid[y][x] = undefined;
+            }
+        }
+    }
+    
+    this.tileGrid = [];
+    for (let y = 0; y < GameConfig.GridHeight; y++) {
+        this.tileGrid[y] = [];
+        for (let x = 0; x < GameConfig.GridWidth; x++) {
+            this.tileGrid[y][x] = undefined;
+        }
+    }
+    
+    console.log('Board cleared');
+}
     private getTilePosition(coords: { x: number; y: number }): { x: number; y: number } {
         return {
             x:
@@ -68,215 +90,94 @@ export class Board extends Component {
 
     private getSpecialTileEffect(tileType: string): 'row' | 'column' | 'candy' | null {
         if (tileType.includes('-x')) return 'row';
-        if (tileType.includes('-y')) return 'column'; 
+        if (tileType.includes('-y')) return 'column';
         if (tileType.includes('-candy')) return 'candy';
         return null;
     }
-    private setCandy(tile:Tile){
-        switch(tile.getTileType()){
-                case'orange':
-                    tile.setTileType('orange-candy');
-                    break;
-                case'red':
+    private setCandy(tile: Tile) {
+        switch (tile.getTileType()) {
+            case 'orange':
+                tile.setTileType('orange-candy');
+                break;
+            case 'red':
 
-                    tile.setTileType('red-candy');
-                    break;
-                case'purple':
+                tile.setTileType('red-candy');
+                break;
+            case 'purple':
 
-                    tile.setTileType('purple-candy');
-                    break;
-                case'blue':
+                tile.setTileType('purple-candy');
+                break;
+            case 'blue':
 
-                    tile.setTileType('blue-candy');
-                    break;
-                case'green':
+                tile.setTileType('blue-candy');
+                break;
+            case 'green':
 
-                    tile.setTileType('green-candy');
-                    break;
-                case'yellow':
+                tile.setTileType('green-candy');
+                break;
+            case 'yellow':
 
-                    tile.setTileType('yellow-candy');
-                    break;
+                tile.setTileType('yellow-candy');
+                break;
         }
     }
-    private setSpecialTile(tile:Tile,director:string){
-        if(director=='horizontal'){
-            switch(tile.getTileType()){
-                case'orange':
+    private setSpecialTile(tile: Tile, director: string) {
+        if (director == 'horizontal') {
+            switch (tile.getTileType()) {
+                case 'orange':
                     tile.setTileType('orange-x');
                     break;
-                case'red':
+                case 'red':
                     tile.setTileType('red-x');
                     break;
-                case'purple':
+                case 'purple':
                     tile.setTileType('purple-x');
                     break;
-                case'blue':
+                case 'blue':
                     tile.setTileType('blue-x');
                     break;
-                case'green':
+                case 'green':
                     tile.setTileType('green-x');
                     break;
-                case'yellow':
+                case 'yellow':
                     tile.setTileType('yellow-x');
                     break;
             }
         }
-        if(director=='vertical'){
-            switch(tile.getTileType()){
-                case'orange':
+        if (director == 'vertical') {
+            switch (tile.getTileType()) {
+                case 'orange':
                     tile.setTileType('orange-y');
                     break;
-                case'red':
+                case 'red':
                     tile.setTileType('red-y');
                     break;
-                case'purple':
+                case 'purple':
                     tile.setTileType('purple-y');
                     break;
-                case'blue':
+                case 'blue':
                     tile.setTileType('blue-y');
                     break;
-                case'green':
+                case 'green':
                     tile.setTileType('green-y');
                     break;
-                case'yellow':
+                case 'yellow':
                     tile.setTileType('yellow-y');
                     break;
             }
         }
     }
-    async removeTiles(matchResults: MatchResult[]): Promise<void> {
-        const allAnimationPromises: Promise<void>[] = [];
-        const tilesToRemove: Tile[] = [];
-        
-        for (const matchResult of matchResults) {
-            switch (matchResult.type) {
-                case 'special-row':
-                case 'special-column':
-                    tilesToRemove.push(...matchResult.tiles);
-                    break;
-                case 'match4':
-                    tilesToRemove.push(...matchResult.tiles.slice(1));
-                    break;
-                case 'match5':
-                     if (matchResult.centerTile) {
-                    const remainingTiles = matchResult.tiles.filter(tile => tile !== matchResult.centerTile);
-                    tilesToRemove.push(...remainingTiles);
-                } else {
-                    tilesToRemove.push(...matchResult.tiles.slice(1));
-                }
-                case 'matchL':
-                case 'matchT':
-                    if (matchResult.centerTile) {
-                        const remainingTiles = matchResult.tiles.filter(tile => tile !== matchResult.centerTile);
-                        tilesToRemove.push(...remainingTiles);
-                    } else {
-                        tilesToRemove.push(...matchResult.tiles.slice(1));
-                    }
-                    break;
-                
-                default:
-                    tilesToRemove.push(...matchResult.tiles);
-                    break;
-            }
-        }
-        
-        for (const matchResult of matchResults) {
-            switch (matchResult.type) {
-                case 'special-candy':
-                    if (this.milestone) {
-        this.milestone.fillBar(10);
-    }
-                allAnimationPromises.push(this.handleSpecialCandy(matchResult));
-                    break;  
-                case 'special-row':
-                    if (this.milestone) {
-        this.milestone.fillBar(20);
-    }
-                    allAnimationPromises.push(this.handleSpecialRow(matchResult));
-                    break;
-                case 'special-column':
-                    if (this.milestone) {
-        this.milestone.fillBar(30);
-    }
-                    allAnimationPromises.push(this.handleSpecialColumn(matchResult));
-                    break;
-                case 'matchT':
-                    if (this.milestone) {
-        this.milestone.fillBar(40);
-    }
-                    allAnimationPromises.push(this.handleMatchT(matchResult));
-                    break;
-                case 'matchL':
-
-                    allAnimationPromises.push(this.handleMatchL(matchResult));
-                    break;
-                case 'match4':
-                    if (this.milestone) {
-        this.milestone.fillBar(30);
-    }
-                    allAnimationPromises.push(this.handleMatch4(matchResult));
-                    break;
-                case 'match5':
-                    if (this.milestone) {
-        this.milestone.fillBar(30);
-    }
-                    allAnimationPromises.push(this.handleMatch5(matchResult));
-                    break;
-                
-                
-                default:
-                    if (this.milestone) {
-        this.milestone.fillBar(10);
-    }
-                    allAnimationPromises.push(this.handleMatch3(matchResult));
-                    break;
-            }
-        }
-        
-        await Promise.all(allAnimationPromises);
-        
-        for (const tile of tilesToRemove) {
-            const coords = this.getTileCoords(tile);
-            if (coords.x !== -1 && coords.y !== -1) {
-                this.tileGrid[coords.y][coords.x] = undefined;
-            }
-            this.TilePool!.Deactivate(tile);
-        }
-    }
-    public getMile():Milestone|undefined{
-       if(this.milestone) return this.milestone;
-    }
-    private async handleSpecialCandy(matchResult: MatchResult): Promise<void> {
-    console.log('Special candy Effect activated!');
     
-    const promises: Promise<void>[] = [];
-    
-    for (let i = 0; i < matchResult.tiles.length; i++) {
-        const tile = matchResult.tiles[i];
-        
-        promises.push(new Promise<void>((resolve) => {
-            const coords = this.getTileCoords(tile);
-            const centerCoords = matchResult.specialActivation?.centerPosition || coords;
-            const distance = Math.abs(coords.x - centerCoords.x) + Math.abs(coords.y - centerCoords.y);
-            
-            setTimeout(() => {
-                tile.vanish();
-                setTimeout(() => {
-                    resolve();
-                }, 300);
-            }, distance * 100); 
-        }));
+    public getMile(): Milestone | undefined {
+        if (this.milestone) return this.milestone;
     }
-    
-    await Promise.all(promises);
-}
+   
 
     private async handleMatch3(matchResult: MatchResult): Promise<void> {
         console.log('Match 3 detected!', matchResult.direction);
-        
+
         const promises: Promise<void>[] = [];
-        
+
         for (const tile of matchResult.tiles) {
             promises.push(new Promise<void>((resolve) => {
                 tile.vanish();
@@ -285,11 +186,10 @@ export class Board extends Component {
                 }, 300);
             }));
         }
-        
+
         await Promise.all(promises);
     }
     public async shuffle(): Promise<void> {
-    
     const allTiles: Tile[] = [];
     for (let y = 0; y < GameConfig.GridHeight; y++) {
         for (let x = 0; x < GameConfig.GridWidth; x++) {
@@ -299,24 +199,57 @@ export class Board extends Component {
             }
         }
     }
-    
+
     if (allTiles.length === 0) return;
-    
+
     const centerX = 0;
     const centerY = 0;
     const radius = Math.max(GameConfig.GridWidth, GameConfig.GridHeight) * GameConfig.TileWidth * 0.6;
-    
+
+    const circlePositions: { x: number, y: number, angle: number }[] = [];
+    for (let i = 0; i < allTiles.length; i++) {
+        const angle = (i / allTiles.length) * Math.PI*3;
+        const x = centerX + Math.cos(angle) * radius;
+        const y = centerY + Math.sin(angle) * radius;
+        circlePositions.push({ x, y, angle });
+    }
+
+    const tileToCircleMapping: { tile: Tile, circlePos: { x: number, y: number, angle: number } }[] = [];
+    const usedPositions = new Set<number>();
+
+    allTiles.forEach(tile => {
+        let nearestIndex = -1;
+        let nearestDistance = Infinity;
+        circlePositions.forEach((circlePos, index) => {
+            if (usedPositions.has(index)) return;
+
+            const distance = Math.sqrt(
+                Math.pow(tile.node.position.x - circlePos.x, 2) +
+                Math.pow(tile.node.position.y - circlePos.y, 2)
+            );
+
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearestIndex = index;
+            }
+        });
+
+        if (nearestIndex !== -1) {
+            usedPositions.add(nearestIndex);
+            tileToCircleMapping.push({
+                tile,
+                circlePos: circlePositions[nearestIndex]
+            });
+        }
+    });
+
     const circlePromises: Promise<void>[] = [];
-    
-    allTiles.forEach((tile, index) => {
-        const angle = (index / allTiles.length) * Math.PI * 2;
-        const circleX = centerX + Math.cos(angle) * radius;
-        const circleY = centerY + Math.sin(angle) * radius;
-        
+
+    tileToCircleMapping.forEach(({ tile, circlePos }) => {
         circlePromises.push(new Promise<void>((resolve) => {
             tween(tile.node)
                 .to(0.8, {
-                    position: new Vec3(circleX, circleY, tile.node.position.z)
+                    position: new Vec3(circlePos.x, circlePos.y, tile.node.position.z)
                 }, {
                     easing: 'cubicOut'
                 })
@@ -324,18 +257,17 @@ export class Board extends Component {
                 .start();
         }));
     });
-    
+
     await Promise.all(circlePromises);
-    
+
     const rotationPromises: Promise<void>[] = [];
-    
-    allTiles.forEach((tile, index) => {
+
+    tileToCircleMapping.forEach(({ tile, circlePos }) => {
         rotationPromises.push(new Promise<void>((resolve) => {
-            const startAngle = (index / allTiles.length) * Math.PI * 2;
-            let currentAngle = startAngle;
-            
+            let currentAngle = circlePos.angle;
+
             tween({ angle: currentAngle })
-                .to(1.0, { angle: currentAngle + Math.PI * 4 }, { 
+                .to(1.0, { angle: currentAngle + Math.PI * 4 }, {
                     easing: 'linear',
                     onUpdate: (target: any) => {
                         const x = centerX + Math.cos(target.angle) * radius;
@@ -347,159 +279,161 @@ export class Board extends Component {
                 .start();
         }));
     });
-    
+
     await Promise.all(rotationPromises);
-    
+
     const tileTypes = allTiles.map(tile => tile.getTileType());
-    
+
     for (let i = tileTypes.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [tileTypes[i], tileTypes[j]] = [tileTypes[j], tileTypes[i]];
     }
-    
-    const availablePositions: {x: number, y: number}[] = [];
+
+    const availablePositions: { x: number, y: number }[] = [];
     for (let y = 0; y < GameConfig.GridHeight; y++) {
         for (let x = 0; x < GameConfig.GridWidth; x++) {
-            availablePositions.push({x, y});
+            availablePositions.push({ x, y });
         }
     }
-    
+
     for (let i = availablePositions.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [availablePositions[i], availablePositions[j]] = [availablePositions[j], availablePositions[i]];
     }
-    
+
     for (let y = 0; y < GameConfig.GridHeight; y++) {
         for (let x = 0; x < GameConfig.GridWidth; x++) {
             this.tileGrid[y][x] = undefined;
         }
     }
-    
+
     const finalPromises: Promise<void>[] = [];
-    
+
     allTiles.forEach((tile, index) => {
         if (index < availablePositions.length && index < tileTypes.length) {
             const newPos = availablePositions[index];
             const newType = tileTypes[index];
-            
+
             tile.setTileType(newType);
-            
             this.tileGrid[newPos.y][newPos.x] = tile;
-            
+
             const targetPosition = this.getTilePosition(newPos);
-            
+
             finalPromises.push(new Promise<void>((resolve) => {
                 const distance = Math.sqrt(
-                    Math.pow(newPos.x - GameConfig.GridWidth/2, 2) + 
-                    Math.pow(newPos.y - GameConfig.GridHeight/2, 2)
+                    Math.pow(newPos.x - GameConfig.GridWidth / 2, 2) +
+                    Math.pow(newPos.y - GameConfig.GridHeight / 2, 2)
                 );
-                const delay = distance * 50;
-                
+            //    const delay = distance * 50;
+
                 setTimeout(() => {
                     tween(tile.node)
                         .to(0.6, {
                             position: new Vec3(
                                 targetPosition.x,
                                 targetPosition.y,
-                                tile.node.position.z
                             )
                         }, {
                             easing: 'backOut'
                         })
                         .call(() => resolve())
                         .start();
-                }, delay);
+                },);
             }));
         }
     });
-    
+
     await Promise.all(finalPromises);
-    
+
     console.log('Shuffle animation completed!');
 }
 
     private async handleMatch4(matchResult: MatchResult): Promise<void> {
         console.log('Match 4 detected!', matchResult.direction);
-        
-        const coords0 = this.getTileCoords(matchResult.tiles[0]);
-        const director=matchResult.direction
-        this.setSpecialTile(matchResult.tiles[0],director)
-        const targetPosition = this.getTilePosition(coords0);
-        
-        const animationPromises: Promise<void>[] = [];
-        
-        animationPromises.push(new Promise<void>((resolve) => {
-            setTimeout(() => {
-                resolve();
-            }, 10);
-        }));
-        
-        for (let i = 1; i < matchResult.tiles.length; i++) {
-            const tile = matchResult.tiles[i];
-            
+        if (matchResult.centerTile) {
+            const coords0 = this.getTileCoords(matchResult.centerTile);
+            const director = matchResult.direction
+            const targetPosition = this.getTilePosition(coords0);
+
+            const animationPromises: Promise<void>[] = [];
+
             animationPromises.push(new Promise<void>((resolve) => {
-                tween(tile.node)
-                    .to(0.3, {
-                        position: new Vec3(
-                            targetPosition.x,
-                            targetPosition.y,
-                            tile.node.position.z
-                        )
-                    }, {
-                        easing: 'linear'
-                    })
-                    .call(() => {
-                        resolve();
-                    })
-                    .start();
+                setTimeout(() => {
+
+
+                    resolve();
+                }, 10);
             }));
+
+            for (let i = 0; i < matchResult.tiles.length; i++) {
+                const tile = matchResult.tiles[i];
+                if (tile == matchResult.centerTile) continue;
+                animationPromises.push(new Promise<void>((resolve) => {
+                    tween(tile.node)
+                        .to(0.2, {
+                            position: new Vec3(
+                                targetPosition.x,
+                                targetPosition.y,
+                                tile.node.position.z
+                            )
+                        }, {
+                            easing: 'linear'
+                        })
+                        .call(() => {
+                            resolve();
+                        })
+                        .start();
+                }));
+            }
+
+            await Promise.all(animationPromises);
+            this.setSpecialTile(matchResult.centerTile, director)
         }
-        
-        await Promise.all(animationPromises);
     }
 
     private async handleMatch5(matchResult: MatchResult): Promise<void> {
         console.log('Match 5 detected!', matchResult.direction);
-            if(matchResult.centerTile){
-                    const tile=matchResult.centerTile
-                    const coords0 = this.getTileCoords(tile);
-                    tile.setTileType('chocolate')
-                    const targetPosition = this.getTilePosition(coords0);
-                const animationPromises: Promise<void>[] = [];
-        
-        animationPromises.push(new Promise<void>((resolve) => {
-            setTimeout(() => {
-                resolve();
-            }, 10);
-        }));
-        
-        for (let i = 1; i < matchResult.tiles.length; i++) {
-            const tile = matchResult.tiles[i];
-            
-            animationPromises.push(new Promise<void>((resolve) => {
-                tween(tile.node)
-                    .to(0.1, {
-                        position: new Vec3(
-                            targetPosition.x,
-                            targetPosition.y,
-                            tile.node.position.z
-                        )
-                    }, {
-                        easing: 'linear'
-                    })
-                    .call(() => {
-                        resolve();
-                    })
-                    .start();
-            }));
-        }
-        
-        await Promise.all(animationPromises);
+        if (matchResult.centerTile) {
+            const tile = matchResult.centerTile
+            const coords0 = this.getTileCoords(tile);
+            const targetPosition = this.getTilePosition(coords0);
+            const animationPromises: Promise<void>[] = [];
 
-                }
+            animationPromises.push(new Promise<void>((resolve) => {
+                setTimeout(() => {
+                    resolve();
+                }, 10);
+            }));
+
+            for (let i = 0; i < matchResult.tiles.length; i++) {
+                const tile = matchResult.tiles[i];
+                if (tile == matchResult.centerTile) continue;
+
+                animationPromises.push(new Promise<void>((resolve) => {
+                    tween(tile.node)
+                        .to(0.2, {
+                            position: new Vec3(
+                                targetPosition.x,
+                                targetPosition.y,
+                                tile.node.position.z
+                            )
+                        }, {
+                            easing: 'linear'
+                        })
+                        .call(() => {
+                            resolve();
+                        })
+                        .start();
+                }));
+            }
+
+            await Promise.all(animationPromises);
+            matchResult.centerTile.setTileType('chocolate')
+
+        }
 
         // const promises: Promise<void>[] = [];
-        
+
         // for (const tile of matchResult.tiles) {
         //     promises.push(new Promise<void>((resolve) => {
         //         tile.vanish();
@@ -508,32 +442,32 @@ export class Board extends Component {
         //         }, 500);
         //     }));
         // }
-        
+
         // await Promise.all(promises);
     }
-private isChocolateTile(tileType: string): boolean {
-    return tileType === 'chocolate';
-}
+    private isChocolateTile(tileType: string): boolean {
+        return tileType === 'chocolate';
+    }
 
-private getAllTilesOfType(targetType: string): Tile[] {
-    const tiles: Tile[] = [];
-    for (let y = 0; y < GameConfig.GridHeight; y++) {
-        for (let x = 0; x < GameConfig.GridWidth; x++) {
-            const tile = this.tileGrid[y][x];
-            if (tile && this.getBaseColor(tile.getTileType()) === targetType) {
-                tiles.push(tile);
+    private getAllTilesOfType(targetType: string): Tile[] {
+        const tiles: Tile[] = [];
+        for (let y = 0; y < GameConfig.GridHeight; y++) {
+            for (let x = 0; x < GameConfig.GridWidth; x++) {
+                const tile = this.tileGrid[y][x];
+                if (tile && this.getBaseColor(tile.getTileType()) === targetType) {
+                    tiles.push(tile);
+                }
             }
         }
+        return tiles;
     }
-    return tiles;
-}
 
 
     private async handleMatchL(matchResult: MatchResult): Promise<void> {
         console.log('L-shape match detected!');
-        
+
         // const promises: Promise<void>[] = [];
-        
+
         // for (const tile of matchResult.tiles) {
         //     promises.push(new Promise<void>((resolve) => {
         //         tile.vanish();
@@ -542,87 +476,123 @@ private getAllTilesOfType(targetType: string): Tile[] {
         //         }, 400);
         //     }));
         // }
-        
+
         // await Promise.all(promises);
     }
 
     private async handleMatchT(matchResult: MatchResult): Promise<void> {
-        if(matchResult.centerTile) {
+        if (matchResult.centerTile) {
             const targetPosition = this.getTilePosition(this.getTileCoords(matchResult.centerTile));
-        
-        const animationPromises: Promise<void>[] = [];
-        
-        animationPromises.push(new Promise<void>((resolve) => {
-            setTimeout(() => {
-                resolve();
-            }, 10);
-        }));
-        
-        for (let i = 0; i < matchResult.tiles.length; i++) {
-            const tile = matchResult.tiles[i];
-            
+
+            const animationPromises: Promise<void>[] = [];
+
             animationPromises.push(new Promise<void>((resolve) => {
-                tween(tile.node)
-                    .to(0.2, {
-                        position: new Vec3(
-                            targetPosition.x,
-                            targetPosition.y,
-                            tile.node.position.z
-                        )
-                    }, {
-                        easing: 'linear'
-                    })
-                    .call(() => {
-                        resolve();
-                    })
-                    .start();
+                setTimeout(() => {
+                    resolve();
+                }, 10);
             }));
-        }
-        
-        await Promise.all(animationPromises);
+
+            for (let i = 0; i < matchResult.tiles.length; i++) {
+                const tile = matchResult.tiles[i];
+
+                animationPromises.push(new Promise<void>((resolve) => {
+                    tween(tile.node)
+                        .to(0.2, {
+                            position: new Vec3(
+                                targetPosition.x,
+                                targetPosition.y,
+                                tile.node.position.z
+                            )
+                        }, {
+                            easing: 'linear'
+                        })
+                        .call(() => {
+                            resolve();
+                        })
+                        .start();
+                }));
+            }
+
+            await Promise.all(animationPromises);
             this.setCandy(matchResult.centerTile)
-        }     
+        }
     }
-    
+
     private async handleSpecialRow(matchResult: MatchResult): Promise<void> {
         console.log('Special Row Effect activated!');
-        
+
+        if (!matchResult.centerTile) return;
+
+        const tiles = matchResult.tiles;
+        const centerIndex = tiles.indexOf(matchResult.centerTile);
+        if (centerIndex === -1) return;
+
         const promises: Promise<void>[] = [];
-        
-        for (let i = 0; i < matchResult.tiles.length; i++) {
-            const tile = matchResult.tiles[i];
-            
-            promises.push(new Promise<void>((resolve) => {
-                setTimeout(() => {
-                    tile.vanish();
+
+        for (let offset = 0; offset < tiles.length; offset++) {
+            const leftIndex = centerIndex - offset;
+            const rightIndex = centerIndex + offset;
+
+            if (leftIndex >= 0) {
+                const tile = tiles[leftIndex];
+                promises.push(new Promise((resolve) => {
                     setTimeout(() => {
-                        resolve();
-                    }, 300);
-                }, i * 50);
-            }));
+                        tile.vanish();
+                        setTimeout(resolve, 300);
+                    }, offset * 100);
+                }));
+            }
+
+            if (rightIndex < tiles.length && rightIndex !== leftIndex) {
+                const tile = tiles[rightIndex];
+                promises.push(new Promise((resolve) => {
+                    setTimeout(() => {
+                        tile.vanish();
+                        setTimeout(resolve, 300);
+                    }, offset * 100);
+                }));
+            }
         }
-        
+
         await Promise.all(promises);
     }
 
     private async handleSpecialColumn(matchResult: MatchResult): Promise<void> {
         console.log('Special Column Effect activated!');
-        
+
+        if (!matchResult.centerTile) return;
+
+        const tiles = matchResult.tiles;
+        const centerIndex = tiles.indexOf(matchResult.centerTile);
+        if (centerIndex === -1) return;
+
         const promises: Promise<void>[] = [];
-        
-        for (let i = 0; i < matchResult.tiles.length; i++) {
-            const tile = matchResult.tiles[i];
-            
-            promises.push(new Promise<void>((resolve) => {
-                setTimeout(() => {
-                    tile.vanish();
+
+        for (let offset = 0; offset < tiles.length; offset++) {
+            const leftIndex = centerIndex - offset;
+            const rightIndex = centerIndex + offset;
+
+            if (leftIndex >= 0) {
+                const tile = tiles[leftIndex];
+                promises.push(new Promise((resolve) => {
                     setTimeout(() => {
-                        resolve();
-                    }, 300);
-                }, i * 50);
-            }));
+                        tile.vanish();
+                        setTimeout(resolve, 300);
+                    }, offset * 100);
+                }));
+            }
+
+            if (rightIndex < tiles.length && rightIndex !== leftIndex) {
+                const tile = tiles[rightIndex];
+                promises.push(new Promise((resolve) => {
+                    setTimeout(() => {
+                        tile.vanish();
+                        setTimeout(resolve, 300);
+                    }, offset * 100);
+                }));
+            }
         }
-        
+
         await Promise.all(promises);
     }
 
@@ -637,151 +607,154 @@ private getAllTilesOfType(targetType: string): Tile[] {
     }
 
 
-swapTiles(tile1: Tile, tile2: Tile, onComplete?: () => void): void {
-    const coords1 = this.getTileCoords(tile1);
-    const coords2 = this.getTileCoords(tile2);
-
-    // Validate coordinates
-    if (coords1.x === -1 || coords1.y === -1 || coords2.x === -1 || coords2.y === -1) {
-        console.error('Invalid tile coordinates');
-        onComplete?.();
-        return;
-    }
-
-    const isChocolateSwap = this.isChocolateTile(tile1.getTileType()) || this.isChocolateTile(tile2.getTileType());
-    
-    if (isChocolateSwap) {
-        this.handleChocolateSwapLogic(tile1, tile2, onComplete);
-        return;
-    }
-
-    this.tileGrid[coords1.y][coords1.x] = tile2;
-    this.tileGrid[coords2.y][coords2.x] = tile1;
-
-    tween(tile1.node)
-        .to(
-            0.4,
-            {
-                position: new Vec3(
-                    tile2.node.x,
-                    tile2.node.y,
-                    tile1.node.position.z
-                ),
-            },
-            {
-                easing: 'linear',
-            }
-        )
-        .start();
-
-    tween(tile2.node)
-        .to(
-            0.4,
-            {
-                position: new Vec3(
-                    tile1.node.x,
-                    tile1.node.y,
-                    tile2.node.position.z
-                ),
-            },
-            {
-                easing: 'linear',
-            }
-        )
-        .call(() => {
-            onComplete?.();
-        })
-        .start();
-}
-
-private async handleChocolateSwapLogic(tile1: Tile, tile2: Tile, onComplete?: () => void): Promise<void> {
-    try {
+    swapTiles(tile1: Tile, tile2: Tile, onComplete?: () => void): void {
         const coords1 = this.getTileCoords(tile1);
         const coords2 = this.getTileCoords(tile2);
-        
+
+        // Validate coordinates
         if (coords1.x === -1 || coords1.y === -1 || coords2.x === -1 || coords2.y === -1) {
-            console.error('Invalid coordinates in chocolate swap');
+            console.error('Invalid tile coordinates');
             onComplete?.();
             return;
         }
 
-        const chocolateTile = this.isChocolateTile(tile1.getTileType()) ? tile1 : tile2;
-        const targetTile = chocolateTile === tile1 ? tile2 : tile1;
-        
+        const isChocolateSwap = this.isChocolateTile(tile1.getTileType()) || this.isChocolateTile(tile2.getTileType());
+
+        if (isChocolateSwap) {
+            this.handleChocolateSwapLogic(tile1, tile2, onComplete);
+            return;
+        }
+
         this.tileGrid[coords1.y][coords1.x] = tile2;
         this.tileGrid[coords2.y][coords2.x] = tile1;
-        
-        const swapPromises = [
-            new Promise<void>((resolve) => {
-                tween(tile1.node)
-                    .to(0.4, {
-                        position: new Vec3(
-                            tile2.node.x,
-                            tile2.node.y,
-                            tile1.node.position.z
-                        ),
-                    }, { easing: 'linear' })
-                    .call(() => resolve())
-                    .start();
-            }),
-            new Promise<void>((resolve) => {
-                tween(tile2.node)
-                    .to(0.4, {
-                        position: new Vec3(
-                            tile1.node.x,
-                            tile1.node.y,
-                            tile2.node.position.z
-                        ),
-                    }, { easing: 'linear' })
-                    .call(() => resolve())
-                    .start();
+
+        tween(tile1.node)
+            .to(
+                0.4,
+                {
+                    position: new Vec3(
+                        tile2.node.x,
+                        tile2.node.y,
+                        tile1.node.position.z
+                    ),
+                },
+                {
+                    easing: 'linear',
+                }
+            )
+            .start();
+
+        tween(tile2.node)
+            .to(
+                0.4,
+                {
+                    position: new Vec3(
+                        tile1.node.x,
+                        tile1.node.y,
+                        tile2.node.position.z
+                    ),
+                },
+                {
+                    easing: 'linear',
+                }
+            )
+            .call(() => {
+                onComplete?.();
             })
-        ];
-        
-        await Promise.all(swapPromises);
-        
-        const matchResult = await this.handleChocolateSwap(chocolateTile, targetTile);
-        
-        await this.removeTiles([matchResult]);
-        
-        onComplete?.();
-        
-    } catch (error) {
-        console.error('Error in chocolate swap logic:', error);
-        onComplete?.();
+            .start();
     }
-}
 
-private async handleChocolateSwap(chocolateTile: Tile, targetTile: Tile): Promise<MatchResult> {
-    const targetType = this.getBaseColor(targetTile.getTileType());
-    const allMatchingTiles = this.getAllTilesOfType(targetType);
-    
-    const validTiles = allMatchingTiles.filter(tile => {
-        const coords = this.getTileCoords(tile);
-        return coords.x !== -1 && coords.y !== -1;
-    });
-    
-    const chocolateCoords = this.getTileCoords(chocolateTile);
-    if (chocolateCoords.x !== -1 && chocolateCoords.y !== -1) {
-        validTiles.push(chocolateTile);
-    }
-    
-    return {
-        tiles: validTiles,
-        type: 'special-candy',
-        direction: 'cross',
-        centerTile: chocolateTile,
-        specialActivation: {
-            activatorTiles: [chocolateTile, targetTile],
-            effectType: 'candy',
-            centerPosition: chocolateCoords
+    private async handleChocolateSwapLogic(tile1: Tile, tile2: Tile, onComplete?: () => void): Promise<void> {
+        try {
+            const coords1 = this.getTileCoords(tile1);
+            const coords2 = this.getTileCoords(tile2);
+
+            if (coords1.x === -1 || coords1.y === -1 || coords2.x === -1 || coords2.y === -1) {
+                console.error('Invalid coordinates in chocolate swap');
+                onComplete?.();
+                return;
+            }
+
+            const chocolateTile = this.isChocolateTile(tile1.getTileType()) ? tile1 : tile2;
+            const targetTile = chocolateTile === tile1 ? tile2 : tile1;
+
+            this.tileGrid[coords1.y][coords1.x] = tile2;
+            this.tileGrid[coords2.y][coords2.x] = tile1;
+
+            const swapPromises = [
+                new Promise<void>((resolve) => {
+                    tween(tile1.node)
+                        .to(0.4, {
+                            position: new Vec3(
+                                tile2.node.x,
+                                tile2.node.y,
+                                tile1.node.position.z
+                            ),
+                        }, { easing: 'linear' })
+                        .call(() => resolve())
+                        .start();
+                }),
+                new Promise<void>((resolve) => {
+                    tween(tile2.node)
+                        .to(0.4, {
+                            position: new Vec3(
+                                tile1.node.x,
+                                tile1.node.y,
+                                tile2.node.position.z
+                            ),
+                        }, { easing: 'linear' })
+                        .call(() => resolve())
+                        .start();
+                })
+            ];
+
+            await Promise.all(swapPromises);
+
+            const matchResult = await this.handleChocolateSwap(chocolateTile, targetTile);
+
+            await this.removeTiles([matchResult]);
+
+            onComplete?.();
+
+        } catch (error) {
+            console.error('Error in chocolate swap logic:', error);
+            onComplete?.();
         }
-    };
-}
+    }
 
-    getMatches(): MatchResult[] {
+    private async handleChocolateSwap(chocolateTile: Tile, targetTile: Tile): Promise<MatchResult> {
+        const targetType = this.getBaseColor(targetTile.getTileType());
+        const allMatchingTiles = this.getAllTilesOfType(targetType);
+
+        const validTiles = allMatchingTiles.filter(tile => {
+            const coords = this.getTileCoords(tile);
+            return coords.x !== -1 && coords.y !== -1;
+        });
+
+        const chocolateCoords = this.getTileCoords(chocolateTile);
+        if (chocolateCoords.x !== -1 && chocolateCoords.y !== -1) {
+            validTiles.push(chocolateTile);
+        }
+
+        return {
+            tiles: validTiles,
+            type: 'special-candy',
+            direction: 'cross',
+            centerTile: chocolateTile,
+            specialActivation: {
+                activatorTiles: [chocolateTile, targetTile],
+                effectType: 'candy',
+                centerPosition: chocolateCoords
+            }
+        };
+    }
+
+ // Các method cần sửa trong Board.ts
+
+// 1. Sửa method getMatches để candy interaction có priority cao nhất
+getMatches(swappedTiles?: Tile[]): MatchResult[] {
     let visited: boolean[][] = [];
-    
+
     for (let y = 0; y < GameConfig.GridHeight; y++) {
         let row = [];
         for (let x = 0; x < GameConfig.GridWidth; x++) {
@@ -795,7 +768,7 @@ private async handleChocolateSwap(chocolateTile: Tile, targetTile: Tile): Promis
     for (let y = 0; y < GameConfig.GridHeight; y++) {
         for (let x = 0; x < GameConfig.GridWidth; x++) {
             if (visited[y][x]) continue;
-            
+
             const curTile = this.tileGrid[y][x];
             if (!curTile) continue;
 
@@ -805,58 +778,93 @@ private async handleChocolateSwap(chocolateTile: Tile, targetTile: Tile): Promis
 
             let processedMatch = false;
 
-            // PRIORITY 1: Match 5 
-            if (horizontal.length >= 3 && vertical.length >= 3) {
+            // PRIORITY 1: Candy interactions - KIỂM TRA TRƯỚC TIÊN
+            if (horizontal.length >= 3) {
+                const specialCandy = this.checkCandyInteraction(horizontal);
+                if (specialCandy) {
+                    horizontal.forEach((tile: Tile) => {
+                        const coords = this.getTileCoords(tile);
+                        if (coords.x !== -1 && coords.y !== -1) {
+                            visited[coords.y][coords.x] = true;
+                        }
+                    });
+                    matchResults.push(specialCandy);
+                    processedMatch = true;
+                }
+            }
+
+            if (!processedMatch && vertical.length >= 3) {
+                const specialCandy = this.checkCandyInteraction(vertical);
+                if (specialCandy) {
+                    vertical.forEach((tile: Tile) => {
+                        const coords = this.getTileCoords(tile);
+                        if (coords.x !== -1 && coords.y !== -1) {
+                            visited[coords.y][coords.x] = true;
+                        }
+                    });
+                    matchResults.push(specialCandy);
+                    processedMatch = true;
+                }
+            }
+
+            if (!processedMatch && horizontal.length >= 3) {
+                const specialInteraction = this.checkSpecialTileInteraction(horizontal, 'y');
+                if (specialInteraction) {
+                    horizontal.forEach((tile: Tile) => {
+                        const coords = this.getTileCoords(tile);
+                        if (coords.x !== -1 && coords.y !== -1) {
+                            visited[coords.y][coords.x] = true;
+                        }
+                    });
+                    matchResults.push(specialInteraction);
+                    processedMatch = true;
+                }
+            }
+
+            if (!processedMatch && vertical.length >= 3) {
+                const specialInteraction = this.checkSpecialTileInteraction(vertical, 'x');
+                if (specialInteraction) {
+                    vertical.forEach((tile: Tile) => {
+                        const coords = this.getTileCoords(tile);
+                        if (coords.x !== -1 && coords.y !== -1) {
+                            visited[coords.y][coords.x] = true;
+                        }
+                    });
+                    matchResults.push(specialInteraction);
+                    processedMatch = true;
+                }
+            }
+
+            if (!processedMatch && horizontal.length >= 3 && vertical.length >= 3) {
                 const allTiles = [...horizontal];
                 vertical.forEach(tile => {
                     if (allTiles.indexOf(tile) === -1) {
                         allTiles.push(tile);
                     }
                 });
-                
-                // Check if this is a Match 5
-                if (horizontal.length >= 5 || vertical.length >= 5) {
-                    allTiles.forEach((tile: Tile) => {
-                        const coords = this.getTileCoords(tile);
-                        if (coords.x !== -1 && coords.y !== -1) {
-                            visited[coords.y][coords.x] = true;
-                        }
-                    });
 
-                    const intersectionTile = this.findIntersectionTile(horizontal, vertical);
-                    
-                    matchResults.push({
-                        tiles: allTiles,
-                        type: 'match5',
-                        direction: horizontal.length >= 5 ? 'horizontal' : 'vertical',
-                        centerTile: intersectionTile
-                    });
-                    processedMatch = true;
-                } else {
-                    // Regular cross match 
-                    allTiles.forEach((tile: Tile) => {
-                        const coords = this.getTileCoords(tile);
-                        if (coords.x !== -1 && coords.y !== -1) {
-                            visited[coords.y][coords.x] = true;
-                        }
-                    });
+                allTiles.forEach((tile: Tile) => {
+                    const coords = this.getTileCoords(tile);
+                    if (coords.x !== -1 && coords.y !== -1) {
+                        visited[coords.y][coords.x] = true;
+                    }
+                });
 
-                    const intersectionTile = this.findIntersectionTile(horizontal, vertical);
-                    const crossMatchType = this.determineCrossMatchType(horizontal.length, vertical.length);
-                    
-                    matchResults.push({
-                        tiles: allTiles,
-                        type: crossMatchType,
-                        direction: 'cross',
-                        centerTile: intersectionTile
-                    });
-                    processedMatch = true;
-                }
+                const intersectionTile = this.findIntersectionTile(horizontal, vertical);
+                const crossMatchType = this.determineCrossMatchType(horizontal.length, vertical.length);
+
+                matchResults.push({
+                    tiles: allTiles,
+                    type: crossMatchType,
+                    direction: 'cross',
+                    centerTile: intersectionTile
+                });
+                processedMatch = true;
             }
-            // PRIORITY 2: Single line Match 5
-            else if (horizontal.length >= 5) {
-                const centerTile = this.getCenterTile(horizontal);
-                
+
+            if (!processedMatch && horizontal.length >= 5) {
+                const centerTile = this.findSwappedTileInMatch(horizontal, swappedTiles) || this.getCenterTile(horizontal);
+
                 matchResults.push({
                     tiles: horizontal,
                     type: 'match5',
@@ -872,9 +880,9 @@ private async handleChocolateSwap(chocolateTile: Tile, targetTile: Tile): Promis
                 });
                 processedMatch = true;
             }
-            else if (vertical.length >= 5) {
-                const centerTile = this.getCenterTile(vertical);
-                
+            else if (!processedMatch && vertical.length >= 5) {
+                const centerTile = this.findSwappedTileInMatch(vertical, swappedTiles) || this.getCenterTile(vertical);
+
                 matchResults.push({
                     tiles: vertical,
                     type: 'match5',
@@ -890,130 +898,51 @@ private async handleChocolateSwap(chocolateTile: Tile, targetTile: Tile): Promis
                 });
                 processedMatch = true;
             }
-            // PRIORITY 3: Candy interactions
-            else if (horizontal.length >= 3) {
-                const specialCandy = this.checkCandyInteraction(horizontal);
-                if (specialCandy) {
-                    horizontal.forEach((tile: Tile) => {
-                        const coords = this.getTileCoords(tile);
-                        if (coords.x !== -1 && coords.y !== -1) {
-                            visited[coords.y][coords.x] = true;
-                        }
-                    });
-                    matchResults.push(specialCandy);
-                    processedMatch = true;
-                }
-            }
-            else if (vertical.length >= 3) {
-                const specialCandy = this.checkCandyInteraction(vertical);
-                if (specialCandy) {
-                    vertical.forEach((tile: Tile) => {
-                        const coords = this.getTileCoords(tile);
-                        if (coords.x !== -1 && coords.y !== -1) {
-                            visited[coords.y][coords.x] = true;
-                        }
-                    });
-                    matchResults.push(specialCandy);
-                    processedMatch = true;
-                }
-            }
 
-            // PRIORITY 4: Match 4
+            // PRIORITY 5: Match 4
             if (!processedMatch && horizontal.length === 4) {
-                const specialTiles = horizontal.filter(tile => this.isSpecialTile(tile.getTileType()));
-                
-                if (specialTiles.length >= 1) {
-                    const specialInteraction = this.checkSpecialTileInteraction(horizontal);
-                    if (specialInteraction) {
-                        horizontal.forEach((tile: Tile) => {
-                            const coords = this.getTileCoords(tile);
-                            if (coords.x !== -1 && coords.y !== -1) {
-                                visited[coords.y][coords.x] = true;
-                            }
-                        });
-                        matchResults.push(specialInteraction);
-                        processedMatch = true;
-                    }
-                }
-                
-                if (!processedMatch) {
-                    const centerTile = this.getCenterTile(horizontal);
-                    
-                    matchResults.push({
-                        tiles: horizontal,
-                        type: 'match4',
-                        direction: 'horizontal',
-                        centerTile: centerTile
-                    });
+                const centerTile = this.findSwappedTileInMatch(horizontal, swappedTiles) || this.getCenterTile(horizontal);
 
-                    horizontal.forEach((tile: Tile) => {
-                        const coords = this.getTileCoords(tile);
-                        if (coords.x !== -1 && coords.y !== -1) {
-                            visited[coords.y][coords.x] = true;
-                        }
-                    });
-                    processedMatch = true;
-                }
+                matchResults.push({
+                    tiles: horizontal,
+                    type: 'match4',
+                    direction: 'horizontal',
+                    centerTile: centerTile
+                });
+
+                horizontal.forEach((tile: Tile) => {
+                    const coords = this.getTileCoords(tile);
+                    if (coords.x !== -1 && coords.y !== -1) {
+                        visited[coords.y][coords.x] = true;
+                    }
+                });
+                processedMatch = true;
             }
             else if (!processedMatch && vertical.length === 4) {
-                const specialTiles = vertical.filter(tile => this.isSpecialTile(tile.getTileType()));
-                
-                if (specialTiles.length >= 1) {
-                    const specialInteraction = this.checkSpecialTileInteraction(vertical);
-                    if (specialInteraction) {
-                        vertical.forEach((tile: Tile) => {
-                            const coords = this.getTileCoords(tile);
-                            if (coords.x !== -1 && coords.y !== -1) {
-                                visited[coords.y][coords.x] = true;
-                            }
-                        });
-                        matchResults.push(specialInteraction);
-                        processedMatch = true;
-                    }
-                }
-                
-                if (!processedMatch) {
-                    const centerTile = this.getCenterTile(vertical);
-                    
-                    matchResults.push({
-                        tiles: vertical,
-                        type: 'match4',
-                        direction: 'vertical',
-                        centerTile: centerTile
-                    });
+                const centerTile = this.findSwappedTileInMatch(vertical, swappedTiles) || this.getCenterTile(vertical);
 
-                    vertical.forEach((tile: Tile) => {
-                        const coords = this.getTileCoords(tile);
-                        if (coords.x !== -1 && coords.y !== -1) {
-                            visited[coords.y][coords.x] = true;
-                        }
-                    });
-                    processedMatch = true;
-                }
+                matchResults.push({
+                    tiles: vertical,
+                    type: 'match4',
+                    direction: 'vertical',
+                    centerTile: centerTile
+                });
+
+                vertical.forEach((tile: Tile) => {
+                    const coords = this.getTileCoords(tile);
+                    if (coords.x !== -1 && coords.y !== -1) {
+                        visited[coords.y][coords.x] = true;
+                    }
+                });
+                processedMatch = true;
             }
 
-            // PRIORITY 5: Match 3 (lowest priority)
-            if (!processedMatch && horizontal.length >= 3) {
-                const specialTiles = horizontal.filter(tile => this.isSpecialTile(tile.getTileType()));
-                
-                if (specialTiles.length >= 1) {
-                    const specialInteraction = this.checkSpecialTileInteraction(horizontal);
-                    if (specialInteraction) {
-                        horizontal.forEach((tile: Tile) => {
-                            const coords = this.getTileCoords(tile);
-                            if (coords.x !== -1 && coords.y !== -1) {
-                                visited[coords.y][coords.x] = true;
-                            }
-                        });
-                        matchResults.push(specialInteraction);
-                        processedMatch = true;
-                    }
-                }
-                
-                if (!processedMatch) {
+            // PRIORITY 6: Regular Match 3
+            if (!processedMatch) {
+                if (horizontal.length >= 3) {
                     const matchType = this.determineMatchType(horizontal.length);
                     const centerTile = this.getCenterTile(horizontal);
-                    
+
                     matchResults.push({
                         tiles: horizontal,
                         type: matchType,
@@ -1027,27 +956,12 @@ private async handleChocolateSwap(chocolateTile: Tile, targetTile: Tile): Promis
                             visited[coords.y][coords.x] = true;
                         }
                     });
+                    processedMatch = true;
                 }
-            }
-            else if (!processedMatch && vertical.length >= 3) {
-                const specialTiles = vertical.filter(tile => this.isSpecialTile(tile.getTileType()));
-                
-                if (specialTiles.length >= 1) {
-                    const specialInteraction = this.checkSpecialTileInteraction(vertical);
-                    if (specialInteraction) {
-                        vertical.forEach((tile: Tile) => {
-                            const coords = this.getTileCoords(tile);
-                            if (coords.x !== -1 && coords.y !== -1) {
-                                visited[coords.y][coords.x] = true;
-                            }
-                        });
-                        matchResults.push(specialInteraction);
-                    }
-                }
-                else {
+                else if (vertical.length >= 3) {
                     const matchType = this.determineMatchType(vertical.length);
                     const centerTile = this.getCenterTile(vertical);
-                    
+
                     matchResults.push({
                         tiles: vertical,
                         type: matchType,
@@ -1068,122 +982,282 @@ private async handleChocolateSwap(chocolateTile: Tile, targetTile: Tile): Promis
 
     return matchResults;
 }
-    private checkCandyInteraction(matchedTiles: Tile[]): MatchResult | null {
-    const specialTiles = matchedTiles.filter(tile => this.isSpecialTile(tile.getTileType()));
-    const normalTiles = matchedTiles.filter(tile => !this.isSpecialTile(tile.getTileType()));
+
+private checkCandyInteraction(matchedTiles: Tile[]): MatchResult | null {
+    const candyTiles = matchedTiles.filter(tile => 
+        this.isSpecialTile(tile.getTileType()) && 
+        this.getSpecialTileEffect(tile.getTileType()) === 'candy'
+    );
     
-    if (specialTiles.length === 0) return null;
+    if (candyTiles.length === 0) return null;
     
-    for (const specialTile of specialTiles) {
-        const baseColor = this.getBaseColor(specialTile.getTileType());
-        const matchingNormalTiles = normalTiles.filter(tile => 
-            this.getBaseColor(tile.getTileType()) === baseColor
-        );
-        
-        if (matchingNormalTiles.length >= 2) {
-            const effect = this.getSpecialTileEffect(specialTile.getTileType());
-            const coords = this.getTileCoords(specialTile);
+    const candyTile = candyTiles[0];
+    const coords = this.getTileCoords(candyTile);
+    
+    const surroundingTiles: Tile[] = [];
+    
+    for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+            const newX = coords.x + dx;
+            const newY = coords.y + dy;
             
-            if (effect === 'candy') {
-                const surroundingTiles: Tile[] = [];
-                
-                for (let dy = -1; dy <= 1; dy++) {
-                    for (let dx = -1; dx <= 1; dx++) {
-                        const newX = coords.x + dx;
-                        const newY = coords.y + dy;
-                        
-                        if (newX >= 0 && newX < GameConfig.GridWidth && 
-                            newY >= 0 && newY < GameConfig.GridHeight) {
-                            const tile = this.tileGrid[newY][newX];
-                            if (tile) {
-                                surroundingTiles.push(tile);
-                            }
-                        }
-                    }
+            if (newX >= 0 && newX < GameConfig.GridWidth &&
+                newY >= 0 && newY < GameConfig.GridHeight) {
+                const tile = this.tileGrid[newY][newX];
+                if (tile) {
+                    surroundingTiles.push(tile);
                 }
-                
-                return {
-                    tiles: surroundingTiles,
-                    type: 'special-candy',
-                    direction: 'cross',
-                    centerTile: specialTile,
-                    specialActivation: {
-                        activatorTiles: [...matchingNormalTiles, specialTile],
-                        effectType: 'candy',
-                        centerPosition: coords
-                    }
-                };
             }
         }
     }
     
-    return null;
+    return {
+        tiles: surroundingTiles,
+        type: 'special-candy',
+        direction: 'cross',
+        centerTile: candyTile,
+        specialActivation: {
+            activatorTiles: matchedTiles,
+            effectType: 'candy',
+            centerPosition: coords
+        }
+    };
 }
-    private checkSpecialTileInteraction(matchedTiles: Tile[]): MatchResult | null {
+
+async removeTiles(matchResults: MatchResult[]): Promise<void> {
+    const allAnimationPromises: Promise<void>[] = [];
+    const tilesToRemove: Tile[] = [];
+
+    const candyMatches = matchResults.filter(mr => mr.type === 'special-candy');
+    const otherMatches = matchResults.filter(mr => mr.type !== 'special-candy');
+
+    for (const matchResult of candyMatches) {
+        if (this.milestone) {
+            this.milestone.fillBar(15); 
+        }
+        allAnimationPromises.push(this.handleSpecialCandy(matchResult));
+        tilesToRemove.push(...matchResult.tiles);
+    }
+
+    for (const matchResult of otherMatches) {
+        switch (matchResult.type) {
+            case 'special-row':
+                if (this.milestone) {
+                    this.milestone.fillBar(12);
+                }
+                allAnimationPromises.push(this.handleSpecialRow(matchResult));
+                tilesToRemove.push(...matchResult.tiles);
+                break;
+            case 'special-column':
+                if (this.milestone) {
+                    this.milestone.fillBar(12);
+                }
+                allAnimationPromises.push(this.handleSpecialColumn(matchResult));
+                tilesToRemove.push(...matchResult.tiles);
+                break;
+            case 'matchT':
+                if (this.milestone) {
+                    this.milestone.fillBar(8);
+                }
+                allAnimationPromises.push(this.handleMatchT(matchResult));
+                if (matchResult.centerTile) {
+                    const otherTiles = matchResult.tiles.filter(tile => tile !== matchResult.centerTile);
+                    tilesToRemove.push(...otherTiles);
+                }
+                break;
+            case 'matchL':
+                if (this.milestone) {
+                    this.milestone.fillBar(6);
+                }
+                allAnimationPromises.push(this.handleMatchL(matchResult));
+                if (matchResult.centerTile) {
+                    const otherTiles = matchResult.tiles.filter(tile => tile !== matchResult.centerTile);
+                    tilesToRemove.push(...otherTiles);
+                }
+                break;
+            case 'match4':
+                if (this.milestone) {
+                    this.milestone.fillBar(5);
+                }
+                allAnimationPromises.push(this.handleMatch4(matchResult));
+                if (matchResult.centerTile) {
+                    const otherTiles = matchResult.tiles.filter(tile => tile !== matchResult.centerTile);
+                    tilesToRemove.push(...otherTiles);
+                }
+                break;
+            case 'match5':
+                if (this.milestone) {
+                    this.milestone.fillBar(10);
+                }
+                allAnimationPromises.push(this.handleMatch5(matchResult));
+                if (matchResult.centerTile) {
+                    const remainingTiles = matchResult.tiles.filter(tile => tile !== matchResult.centerTile);
+                    tilesToRemove.push(...remainingTiles);
+                } else {
+                    tilesToRemove.push(...matchResult.tiles.slice(1));
+                }
+                break;
+            default:
+                if (this.milestone) {
+                    this.milestone.fillBar(3);
+                }
+                allAnimationPromises.push(this.handleMatch3(matchResult));
+                tilesToRemove.push(...matchResult.tiles);
+                break;
+        }
+    }
+
+    await Promise.all(allAnimationPromises);
+
+    for (const tile of tilesToRemove) {
+        const coords = this.getTileCoords(tile);
+        if (coords.x !== -1 && coords.y !== -1) {
+            this.tileGrid[coords.y][coords.x] = undefined;
+        }
+        this.TilePool!.Deactivate(tile);
+    }
+}
+
+// 4. Sửa method handleSpecialCandy để animation mượt hơn
+private async handleSpecialCandy(matchResult: MatchResult): Promise<void> {
+    console.log('Special candy Effect activated!');
+
+    const promises: Promise<void>[] = [];
+    const centerCoords = matchResult.specialActivation?.centerPosition || { x: 0, y: 0 };
+
+    for (let i = 0; i < matchResult.tiles.length; i++) {
+        const tile = matchResult.tiles[i];
+        const coords = this.getTileCoords(tile);
+        
+        // Tính khoảng cách từ center để tạo hiệu ứng lan tỏa
+        const distance = Math.abs(coords.x - centerCoords.x) + Math.abs(coords.y - centerCoords.y);
+
+        promises.push(new Promise<void>((resolve) => {
+            setTimeout(() => {
+                tile.vanish();
+                setTimeout(() => {
+                    resolve();
+                }, 300);
+            }, distance * 80); // Hiệu ứng lan tỏa
+        }));
+    }
+
+    await Promise.all(promises);
+} private findSwappedTileInMatch(matchTiles: Tile[], swappedTiles?: Tile[]): Tile | null {
+        if (!swappedTiles || swappedTiles.length === 0) return null;
+
+        for (const swappedTile of swappedTiles) {
+            for (const matchTile of matchTiles) {
+                if (matchTile === swappedTile) {
+                    return swappedTile;
+                }
+            }
+        }
+
+        return null;
+    }
+   
+    private checkSpecialTileInteraction(matchedTiles: Tile[], direction: string): MatchResult | null {
         const specialTiles = matchedTiles.filter(tile => this.isSpecialTile(tile.getTileType()));
         const normalTiles = matchedTiles.filter(tile => !this.isSpecialTile(tile.getTileType()));
-        
+
         if (specialTiles.length === 0) return null;
-        
+
         for (const specialTile of specialTiles) {
             const baseColor = this.getBaseColor(specialTile.getTileType());
-            const matchingNormalTiles = normalTiles.filter(tile => 
+            const matchingNormalTiles = normalTiles.filter(tile =>
                 this.getBaseColor(tile.getTileType()) === baseColor
             );
-            
+
             if (matchingNormalTiles.length >= 2) {
                 const effect = this.getSpecialTileEffect(specialTile.getTileType());
                 const coords = this.getTileCoords(specialTile);
-                
+
                 if (effect === 'row') {
                     const rowTiles: Tile[] = [];
                     for (let x = 0; x < GameConfig.GridWidth; x++) {
                         const tile = this.tileGrid[coords.y][x];
                         if (tile) rowTiles.push(tile);
                     }
-                    
-                    return {
-                        tiles: rowTiles,
-                        type: 'special-row',
-                        direction: 'horizontal',
-                        centerTile: specialTile,
-                        specialActivation: {
-                            activatorTiles: [...matchingNormalTiles, specialTile],
-                            effectType: 'row',
-                            centerPosition: coords
-                        }
-                    };
+                    if (direction == 'x') {
+                        const allAffectedTiles = [...new Set([...matchedTiles, ...rowTiles])];
+
+                        return {
+                            tiles: allAffectedTiles,
+                            type: 'special-row',
+                            direction: 'horizontal',
+                            centerTile: specialTile,
+                            specialActivation: {
+                                activatorTiles: matchedTiles,
+                                effectType: 'row',
+                                centerPosition: coords
+                            }
+                        };
+                    }
+                    if (direction == 'y') {
+                        const allAffectedTiles = [...rowTiles];
+
+                        return {
+                            tiles: allAffectedTiles,
+                            type: 'special-row',
+                            direction: 'horizontal',
+                            centerTile: specialTile,
+                            specialActivation: {
+                                activatorTiles: matchedTiles,
+                                effectType: 'row',
+                                centerPosition: coords
+                            }
+                        };
+                    }
+
                 }
-                
+
                 if (effect === 'column') {
                     const columnTiles: Tile[] = [];
                     for (let y = 0; y < GameConfig.GridHeight; y++) {
                         const tile = this.tileGrid[y][coords.x];
                         if (tile) columnTiles.push(tile);
                     }
-                    
-                    return {
-                        tiles: columnTiles,
-                        type: 'special-column',
-                        direction: 'vertical',
-                        centerTile: specialTile,
-                        specialActivation: {
-                            activatorTiles: [...matchingNormalTiles, specialTile],
-                            effectType: 'column',
-                            centerPosition: coords
-                        }
-                    };
+                    if (direction == 'y') {
+                        const allAffectedTiles = [...new Set([...matchedTiles, ...columnTiles])];
+
+                        return {
+                            tiles: allAffectedTiles,
+                            type: 'special-column',
+                            direction: 'vertical',
+                            centerTile: specialTile,
+                            specialActivation: {
+                                activatorTiles: matchedTiles,
+                                effectType: 'column',
+                                centerPosition: coords
+                            }
+                        };
+                    }
+                    else {
+                        const allAffectedTiles = [...columnTiles];
+
+                        return {
+                            tiles: allAffectedTiles,
+                            type: 'special-column',
+                            direction: 'vertical',
+                            centerTile: specialTile,
+                            specialActivation: {
+                                activatorTiles: matchedTiles,
+                                effectType: 'column',
+                                centerPosition: coords
+                            }
+                        };
+                    }
                 }
             }
         }
-        
+
         return null;
     }
-
     private getMatch(tile: Tile): Match {
         let hoz = this.checkHorizontalMatch(tile);
         let ver = this.checkVerticalMatch(tile);
-        
+
         for (let i = 1; i < hoz.length; i++) {
             const nextHoz = this.checkHorizontalMatch(hoz[i]);
             const nextVer = this.checkVerticalMatch(hoz[i]);
@@ -1192,7 +1266,7 @@ private async handleChocolateSwap(chocolateTile: Tile, targetTile: Tile): Promis
                 ver = nextVer;
             }
         }
-        
+
         for (let i = 1; i < ver.length; i++) {
             const nextHoz = this.checkHorizontalMatch(ver[i]);
             const nextVer = this.checkVerticalMatch(ver[i]);
@@ -1208,50 +1282,50 @@ private async handleChocolateSwap(chocolateTile: Tile, targetTile: Tile): Promis
     private checkHorizontalMatch(tile: Tile): Tile[] {
         const coords = this.getTileCoords(tile);
         if (coords.x === -1 || coords.y === -1) return [];
-        
+
         const { x, y } = coords;
         const match: Tile[] = [tile];
         const baseColor = this.getBaseColor(tile.getTileType());
-        
+
         let i = x - 1;
-        while (i >= 0 && this.tileGrid[y][i] && 
-               this.getBaseColor(this.tileGrid[y][i]!.getTileType()) === baseColor) {
+        while (i >= 0 && this.tileGrid[y][i] &&
+            this.getBaseColor(this.tileGrid[y][i]!.getTileType()) === baseColor) {
             match.unshift(this.tileGrid[y][i]!);
             i--;
         }
-        
+
         i = x + 1;
-        while (i < GameConfig.GridWidth && this.tileGrid[y][i] && 
-               this.getBaseColor(this.tileGrid[y][i]!.getTileType()) === baseColor) {
+        while (i < GameConfig.GridWidth && this.tileGrid[y][i] &&
+            this.getBaseColor(this.tileGrid[y][i]!.getTileType()) === baseColor) {
             match.push(this.tileGrid[y][i]!);
             i++;
         }
-        
+
         return match.length >= 3 ? match : [];
     }
 
     private checkVerticalMatch(tile: Tile): Tile[] {
         const coords = this.getTileCoords(tile);
         if (coords.x === -1 || coords.y === -1) return [];
-        
+
         const { x, y } = coords;
         const match: Tile[] = [tile];
         const baseColor = this.getBaseColor(tile.getTileType());
-        
+
         let i = y - 1;
-        while (i >= 0 && this.tileGrid[i][x] && 
-               this.getBaseColor(this.tileGrid[i][x]!.getTileType()) === baseColor) {
+        while (i >= 0 && this.tileGrid[i][x] &&
+            this.getBaseColor(this.tileGrid[i][x]!.getTileType()) === baseColor) {
             match.unshift(this.tileGrid[i][x]!);
             i--;
         }
-        
+
         i = y + 1;
-        while (i < GameConfig.GridHeight && this.tileGrid[i][x] && 
-               this.getBaseColor(this.tileGrid[i][x]!.getTileType()) === baseColor) {
+        while (i < GameConfig.GridHeight && this.tileGrid[i][x] &&
+            this.getBaseColor(this.tileGrid[i][x]!.getTileType()) === baseColor) {
             match.push(this.tileGrid[i][x]!);
             i++;
         }
-        
+
         return match.length >= 3 ? match : [];
     }
 
@@ -1286,7 +1360,7 @@ private async handleChocolateSwap(chocolateTile: Tile, targetTile: Tile): Promis
 
     async dropAndFillTile(): Promise<void> {
         const movements: Movement[] = [];
-        
+
         for (let x = 0; x < GameConfig.GridWidth; x++) {
             for (let y = GameConfig.GridHeight - 1; y >= 0; y--) {
                 const tile = this.tileGrid[y][x];
@@ -1303,45 +1377,45 @@ private async handleChocolateSwap(chocolateTile: Tile, targetTile: Tile): Promis
                 }
             }
         }
-        
-        const newTiles: Tile[] = []; 
-        
+
+        const newTiles: Tile[] = [];
+
         for (let x = 0; x < GameConfig.GridWidth; x++) {
             let emptyCount = 0;
             for (let y = 0; y < GameConfig.GridHeight; y++) {
                 if (!this.tileGrid[y][x]) emptyCount++;
             }
-            
+
             for (let i = 0; i < emptyCount; i++) {
-                const destY = i; 
-                const spawnY = -(emptyCount - i); 
-                
+                const destY = i;
+                const spawnY = -(emptyCount - i);
+
                 const newTile = this.TilePool?.addTile(x, spawnY);
                 if (newTile) {
                     const spawnPosition = this.getTilePosition({ x, y: spawnY });
                     newTile.node.setPosition(spawnPosition.x, spawnPosition.y, newTile.node.position.z);
-                    
+
                     this.tileGrid[destY][x] = newTile;
                     newTiles.push(newTile);
-                    
-                    movements.push({ 
-                        tile: newTile, 
-                        from: { x, y: spawnY }, 
-                        to: { x, y: destY } 
+
+                    movements.push({
+                        tile: newTile,
+                        from: { x, y: spawnY },
+                        to: { x, y: destY }
                     });
                 }
             }
         }
-        
+
         if (movements.length > 0) {
             const animationPromises: Promise<void>[] = [];
-            
+
             for (const movement of movements) {
                 const targetPosition = this.getTilePosition(movement.to);
-                
+
                 animationPromises.push(new Promise<void>((resolve) => {
                     tween(movement.tile.node)
-                        .to(0.5, { 
+                        .to(0.5, {
                             position: new Vec3(
                                 targetPosition.x,
                                 targetPosition.y,
@@ -1356,7 +1430,7 @@ private async handleChocolateSwap(chocolateTile: Tile, targetTile: Tile): Promis
                         .start();
                 }));
             }
-            
+
             await Promise.all(animationPromises);
         }
     }
@@ -1375,81 +1449,81 @@ private async handleChocolateSwap(chocolateTile: Tile, targetTile: Tile): Promis
     getGrid(): (Tile | undefined)[][] {
         return this.tileGrid
     }
-    
 
-getHint(): HintMove | null {
-    for (let y = 0; y < GameConfig.GridHeight; y++) {
-        for (let x = 0; x < GameConfig.GridWidth; x++) {
-            const tile1 = this.tileGrid[y][x];
-            if (!tile1) continue;
 
-            const directions = [
-                { dx: 0, dy: -1 }, // Up
-                { dx: 0, dy: 1 },  // Down
-                { dx: -1, dy: 0 }, // Left
-                { dx: 1, dy: 0 }   // Right
-            ];
+    getHint(): HintMove | null {
+        for (let y = 0; y < GameConfig.GridHeight; y++) {
+            for (let x = 0; x < GameConfig.GridWidth; x++) {
+                const tile1 = this.tileGrid[y][x];
+                if (!tile1) continue;
 
-            for (const dir of directions) {
-                const newX = x + dir.dx;
-                const newY = y + dir.dy;
+                const directions = [
+                    { dx: 0, dy: -1 }, // Up
+                    { dx: 0, dy: 1 },  // Down
+                    { dx: -1, dy: 0 }, // Left
+                    { dx: 1, dy: 0 }   // Right
+                ];
 
-                if (newX < 0 || newX >= GameConfig.GridWidth || 
-                    newY < 0 || newY >= GameConfig.GridHeight) continue;
+                for (const dir of directions) {
+                    const newX = x + dir.dx;
+                    const newY = y + dir.dy;
 
-                const tile2 = this.tileGrid[newY][newX];
-                if (!tile2) continue;
+                    if (newX < 0 || newX >= GameConfig.GridWidth ||
+                        newY < 0 || newY >= GameConfig.GridHeight) continue;
 
-                // Simulate swap
-                const originalGrid = this.cloneGrid();
-                this.simulateSwap(tile1, tile2);
-                
-                // Check matches after swap
-                const matches = this.getMatches();
-                
-                // Restore grid
-                this.restoreGrid(originalGrid);
-                
-                if (matches.length > 0) {
-                    return {
-                        tile1: tile1,
-                        tile2: tile2,
-                        matchResult: matches
-                    };
+                    const tile2 = this.tileGrid[newY][newX];
+                    if (!tile2) continue;
+
+                    // Simulate swap
+                    const originalGrid = this.cloneGrid();
+                    this.simulateSwap(tile1, tile2);
+
+                    // Check matches after swap
+                    const matches = this.getMatches();
+
+                    // Restore grid
+                    this.restoreGrid(originalGrid);
+
+                    if (matches.length > 0) {
+                        return {
+                            tile1: tile1,
+                            tile2: tile2,
+                            matchResult: matches
+                        };
+                    }
                 }
             }
         }
+
+        return null;
     }
 
-    return null; 
-}
+    private cloneGrid(): (Tile | undefined)[][] {
+        const clonedGrid: (Tile | undefined)[][] = [];
+        for (let y = 0; y < GameConfig.GridHeight; y++) {
+            clonedGrid[y] = [];
+            for (let x = 0; x < GameConfig.GridWidth; x++) {
+                clonedGrid[y][x] = this.tileGrid[y][x];
+            }
+        }
+        return clonedGrid;
+    }
 
-private cloneGrid(): (Tile | undefined)[][] {
-    const clonedGrid: (Tile | undefined)[][] = [];
-    for (let y = 0; y < GameConfig.GridHeight; y++) {
-        clonedGrid[y] = [];
-        for (let x = 0; x < GameConfig.GridWidth; x++) {
-            clonedGrid[y][x] = this.tileGrid[y][x];
+    private simulateSwap(tile1: Tile, tile2: Tile): void {
+        const coords1 = this.getTileCoords(tile1);
+        const coords2 = this.getTileCoords(tile2);
+
+        if (coords1.x === -1 || coords1.y === -1 || coords2.x === -1 || coords2.y === -1) return;
+
+        this.tileGrid[coords1.y][coords1.x] = tile2;
+        this.tileGrid[coords2.y][coords2.x] = tile1;
+    }
+
+    private restoreGrid(originalGrid: (Tile | undefined)[][]): void {
+        for (let y = 0; y < GameConfig.GridHeight; y++) {
+            for (let x = 0; x < GameConfig.GridWidth; x++) {
+                this.tileGrid[y][x] = originalGrid[y][x];
+            }
         }
     }
-    return clonedGrid;
-}
-
-private simulateSwap(tile1: Tile, tile2: Tile): void {
-    const coords1 = this.getTileCoords(tile1);
-    const coords2 = this.getTileCoords(tile2);
-    
-    if (coords1.x === -1 || coords1.y === -1 || coords2.x === -1 || coords2.y === -1) return;
-    
-    this.tileGrid[coords1.y][coords1.x] = tile2;
-    this.tileGrid[coords2.y][coords2.x] = tile1;
-}
-
-private restoreGrid(originalGrid: (Tile | undefined)[][]): void {
-    for (let y = 0; y < GameConfig.GridHeight; y++) {
-        for (let x = 0; x < GameConfig.GridWidth; x++) {
-            this.tileGrid[y][x] = originalGrid[y][x];
-        }
-    }
-}
 }

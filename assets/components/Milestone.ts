@@ -21,7 +21,9 @@ export class Milestone extends Component {
     protected start(): void {
         this.createPool()
     }
-    
+    getCurrentScore(){
+        return this.currentScore
+    }
     fillBar(addScore: number): void {
         const progressBar = this.getComponent(ProgressBar);
         if (!progressBar) return;
@@ -38,7 +40,7 @@ export class Milestone extends Component {
     
     private onMilestoneCompleted(): void {
         console.log('Milestone completed!');
-        this.playConfettiEffect();
+      //  this.playConfettiEffect();
     }
     public getHi():boolean{
         return this.currentScore >= this.targetScore
