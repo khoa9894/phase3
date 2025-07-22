@@ -32,7 +32,7 @@
     },
     "_lpos": {
       "__type__": "cc.Vec3",
-      "x": -7.131,
+      "x": 231.785,
       "y": -553.905,
       "z": 0
     },
@@ -109,16 +109,16 @@
       "b": 255,
       "a": 255
     },
-    "duration": 1,
-    "emissionRate": 100,
-    "life": 1.2,
-    "lifeVar": 1.5,
+    "duration": 1.5,
+    "emissionRate": 130,
+    "life": 3,
+    "lifeVar": 4,
     "angle": 90,
     "angleVar": 20,
-    "startSize": 20,
-    "startSizeVar": 20,
-    "endSize": 20,
-    "endSizeVar": 20,
+    "startSize": 10,
+    "startSizeVar": 10,
+    "endSize": 10,
+    "endSizeVar": 10,
     "startSpin": 0,
     "startSpinVar": 0,
     "endSpin": 0,
@@ -137,10 +137,10 @@
     "gravity": {
       "__type__": "cc.Vec2",
       "x": -200,
-      "y": -400
+      "y": -800
     },
-    "speed": 600,
-    "speedVar": 800,
+    "speed": 1200,
+    "speedVar": 1400,
     "tangentialAccel": 80,
     "tangentialAccelVar": 0,
     "radialAccel": 0,
@@ -162,12 +162,12 @@
       "__uuid__": "951249e0-9f16-456d-8b85-a6ca954da16b@f9941",
       "__expectedType__": "cc.SpriteFrame"
     },
-    "_totalParticles": 200,
+    "_totalParticles": 9999,
     "_startColor": {
       "__type__": "cc.Color",
-      "r": 255,
-      "g": 10,
-      "b": 10,
+      "r": 245,
+      "g": 15,
+      "b": 15,
       "a": 255
     },
     "_startColorVar": {

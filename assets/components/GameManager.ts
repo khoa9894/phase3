@@ -1,5 +1,6 @@
+import { FireConfetti } from './fire';
 import { end } from './end';
-import { _decorator, Component, input, Input, EventTouch, Camera, geometry, Prefab, instantiate, Node,Label } from 'cc'
+import { _decorator, Component, input, Input, EventTouch, Camera, geometry, Prefab, instantiate, Node,Label, AudioClip, AudioSource } from 'cc'
 const { ccclass, property } = _decorator
 import { Tile } from './Tile'
 import { Board } from './Board'
@@ -15,12 +16,37 @@ private moveRemaining = 30;
     private isPaused = false;
     @property(Label)
     private scoreLabel: Label | null = null;
-    
+    @property(AudioClip)
+    private backgroundMusic: AudioClip | null = null;
+    private isplay:boolean=true
+    @property(AudioSource)
+    private audioSource: AudioSource | null = null;
+    @property(FireConfetti)
+    private FireConfetti:FireConfetti|null=null
+     @property(FireConfetti)
+    private FireConfetti1:FireConfetti|null=null
     @property(Label)
     private movesLabel: Label | null = null;
     @property(end)
     private end:end|null=null
+        private playBackgroundMusic(): void {
+        if (this.audioSource && this.backgroundMusic ) {
+            this.audioSource.clip = this.backgroundMusic;
+            this.audioSource.loop = true;
+            this.audioSource.volume = 0.5;
+            this.audioSource.play();
+            console.log('Background music started');
+        } else {
+            console.warn('AudioSource or AudioClip not set');
+        }
+    }
     
+    private stopBackgroundMusic(): void {
+        if (this.audioSource && this.audioSource.playing) {
+            this.audioSource.stop();
+            console.log('Background music stopped');
+        }
+    }
 public pauseGame(): void {
         this.isPaused = true;
         this.canMove = false;
@@ -135,7 +161,7 @@ hihi(){
         this.canMove = true
         this.firstSelectedTile = undefined
         this.secondSelectedTile = undefined
-
+        this.playBackgroundMusic()
         this.board!.createBoard()
         this.board!.setTileClickCallback((tile) => this.onTileClick(tile))
         
@@ -238,14 +264,10 @@ private clearHint(): void {
     private async processMatches(swappedTiles?: Tile[]): Promise<void> {
     if (this.isProcessingMatches || this.isPaused) return;
     if(this.board?.getMile()?.getHi()){
-                const confettiNode = this.createCoff();
-
+        this.FireConfetti!.fireConfetti()
+        this.FireConfetti1!.fireConfetti()
          await this.board!.shuffle()
-          if (confettiNode) {
-            setTimeout(() => {
-                confettiNode.destroy();
-            }, 10); 
-        }
+         
          this.board.getMile()?.resetMilestone()
 
     }

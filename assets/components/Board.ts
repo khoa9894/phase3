@@ -359,8 +359,6 @@ public clearBoard(): void {
 
             animationPromises.push(new Promise<void>((resolve) => {
                 setTimeout(() => {
-
-
                     resolve();
                 }, 10);
             }));
@@ -518,83 +516,166 @@ public clearBoard(): void {
         }
     }
 
-    private async handleSpecialRow(matchResult: MatchResult): Promise<void> {
-        console.log('Special Row Effect activated!');
+private async handleSpecialRow(matchResult: MatchResult): Promise<void> {
 
-        if (!matchResult.centerTile) return;
+    if (!matchResult.centerTile) return;
 
-        const tiles = matchResult.tiles;
-        const centerIndex = tiles.indexOf(matchResult.centerTile);
-        if (centerIndex === -1) return;
+    const centerCoords = this.getTileCoords(matchResult.centerTile);
+    const rowY = centerCoords.y;
+    
+    await this.createRowLaserEffect(rowY);
+    
+    await this.vanishRowTiles(matchResult.tiles, centerCoords.x);
+}
 
-        const promises: Promise<void>[] = [];
+private async handleSpecialColumn(matchResult: MatchResult): Promise<void> {
 
-        for (let offset = 0; offset < tiles.length; offset++) {
-            const leftIndex = centerIndex - offset;
-            const rightIndex = centerIndex + offset;
+    if (!matchResult.centerTile) return;
 
-            if (leftIndex >= 0) {
-                const tile = tiles[leftIndex];
-                promises.push(new Promise((resolve) => {
-                    setTimeout(() => {
-                        tile.vanish();
-                        setTimeout(resolve, 300);
-                    }, offset * 100);
-                }));
-            }
+    const centerCoords = this.getTileCoords(matchResult.centerTile);
+    const columnX = centerCoords.x;
+    
+    await this.createColumnLaserEffect(columnX);
+    
+    await this.vanishColumnTiles(matchResult.tiles, centerCoords.y);
+}
 
-            if (rightIndex < tiles.length && rightIndex !== leftIndex) {
-                const tile = tiles[rightIndex];
-                promises.push(new Promise((resolve) => {
-                    setTimeout(() => {
-                        tile.vanish();
-                        setTimeout(resolve, 300);
-                    }, offset * 100);
-                }));
-            }
-        }
-
-        await Promise.all(promises);
+private async createRowLaserEffect(rowY: number): Promise<void> {
+    
+    const laserPromises: Promise<void>[] = [];
+    
+    for (let x = 0; x < GameConfig.GridWidth; x++) {
+        const tile = this.tileGrid[rowY][x];
+        if (!tile) continue;
+        
+        laserPromises.push(new Promise<void>((resolve) => {
+            const delay = x * 40;
+            
+            setTimeout(() => {
+                tween(tile.node)
+                    .to(0.1, { 
+                        scale: new Vec3(2.0, 0.4, 1.0) 
+                    }, { easing: 'quadOut' })
+                    .to(0.1, { 
+                        scale: new Vec3(2.5, 0.3, 1.0)
+                    }, { easing: 'quadInOut' })
+                    .to(0.1, { 
+                        scale: new Vec3(1.0, 1.0, 1.0) 
+                    }, { easing: 'quadIn' })
+                    .call(() => resolve())
+                    .start();
+                
+                tween(tile.node)
+                    .to(0.05, { angle: 2 })
+                    .to(0.05, { angle: -2 })
+                    .to(0.05, { angle: 1 })
+                    .to(0.05, { angle: -1 })
+                    .to(0.1, { angle: 0 })
+                    .start();
+            }, delay);
+        }));
     }
+    
+    await Promise.all(laserPromises);
+}
 
-    private async handleSpecialColumn(matchResult: MatchResult): Promise<void> {
-        console.log('Special Column Effect activated!');
-
-        if (!matchResult.centerTile) return;
-
-        const tiles = matchResult.tiles;
-        const centerIndex = tiles.indexOf(matchResult.centerTile);
-        if (centerIndex === -1) return;
-
-        const promises: Promise<void>[] = [];
-
-        for (let offset = 0; offset < tiles.length; offset++) {
-            const leftIndex = centerIndex - offset;
-            const rightIndex = centerIndex + offset;
-
-            if (leftIndex >= 0) {
-                const tile = tiles[leftIndex];
-                promises.push(new Promise((resolve) => {
-                    setTimeout(() => {
-                        tile.vanish();
-                        setTimeout(resolve, 300);
-                    }, offset * 100);
-                }));
-            }
-
-            if (rightIndex < tiles.length && rightIndex !== leftIndex) {
-                const tile = tiles[rightIndex];
-                promises.push(new Promise((resolve) => {
-                    setTimeout(() => {
-                        tile.vanish();
-                        setTimeout(resolve, 300);
-                    }, offset * 100);
-                }));
-            }
-        }
-
-        await Promise.all(promises);
+private async createColumnLaserEffect(columnX: number): Promise<void> {
+    
+    const laserPromises: Promise<void>[] = [];
+    
+    for (let y = 0; y < GameConfig.GridHeight; y++) {
+        const tile = this.tileGrid[y][columnX];
+        if (!tile) continue;
+        
+        laserPromises.push(new Promise<void>((resolve) => {
+            const delay = y * 40; 
+            
+            setTimeout(() => {
+                tween(tile.node)
+                    .to(0.1, { 
+                        scale: new Vec3(0.4, 2.0, 1.0) 
+                    }, { easing: 'quadOut' })
+                    .to(0.1, { 
+                        scale: new Vec3(0.3, 2.5, 1.0) 
+                    }, { easing: 'quadInOut' })
+                    .to(0.1, { 
+                        scale: new Vec3(1.0, 1.0, 1.0) 
+                    }, { easing: 'quadIn' })
+                    .call(() => resolve())
+                    .start();
+                
+                tween(tile.node)
+                    .to(0.05, { angle: 2 })
+                    .to(0.05, { angle: -2 })
+                    .to(0.05, { angle: 1 })
+                    .to(0.05, { angle: -1 })
+                    .to(0.1, { angle: 0 })
+                    .start();
+            }, delay);
+        }));
     }
+    
+    await Promise.all(laserPromises);
+}
+
+private async vanishRowTiles(tiles: Tile[], centerX: number): Promise<void> {
+    
+    const vanishPromises: Promise<void>[] = [];
+    
+    tiles.forEach((tile) => {
+        const coords = this.getTileCoords(tile);
+        const distance = Math.abs(coords.x - centerX);
+        
+        vanishPromises.push(new Promise<void>((resolve) => {
+            const delay = distance * 60; 
+            
+            setTimeout(() => {
+                tween(tile.node)
+                    .to(0.1, { 
+                        scale: new Vec3(1.3, 1.3, 1.3) 
+                    }, { easing: 'quadOut' })
+                    .call(() => {
+                        tile.vanish(); 
+                        setTimeout(() => resolve(), 200);
+                    })
+                    .start();
+            }, delay);
+        }));
+    });
+    
+    await Promise.all(vanishPromises);
+}
+
+private async vanishColumnTiles(tiles: Tile[], centerY: number): Promise<void> {
+    
+    const vanishPromises: Promise<void>[] = [];
+    
+    tiles.forEach((tile) => {
+        const coords = this.getTileCoords(tile);
+        const distance = Math.abs(coords.y - centerY);
+        
+        vanishPromises.push(new Promise<void>((resolve) => {
+            const delay = distance * 60; 
+            setTimeout(() => {
+                tween(tile.node)
+                    .to(0.1, { 
+                        scale: new Vec3(1.3, 1.3, 1.3) 
+                    }, { easing: 'quadOut' })
+                    .call(() => {
+                        tile.vanish(); 
+                        setTimeout(() => resolve(), 200);
+                    })
+                    .start();
+            }, delay);
+        }));
+    });
+    
+    await Promise.all(vanishPromises);
+}
+
+
+
+
 
     areAdjacent(tile1: Tile, tile2: Tile): boolean {
         const coords1 = this.getTileCoords(tile1)
@@ -749,9 +830,7 @@ public clearBoard(): void {
         };
     }
 
- // Các method cần sửa trong Board.ts
 
-// 1. Sửa method getMatches để candy interaction có priority cao nhất
 getMatches(swappedTiles?: Tile[]): MatchResult[] {
     let visited: boolean[][] = [];
 
@@ -778,7 +857,6 @@ getMatches(swappedTiles?: Tile[]): MatchResult[] {
 
             let processedMatch = false;
 
-            // PRIORITY 1: Candy interactions - KIỂM TRA TRƯỚC TIÊN
             if (horizontal.length >= 3) {
                 const specialCandy = this.checkCandyInteraction(horizontal);
                 if (specialCandy) {
@@ -1043,21 +1121,21 @@ async removeTiles(matchResults: MatchResult[]): Promise<void> {
         switch (matchResult.type) {
             case 'special-row':
                 if (this.milestone) {
-                    this.milestone.fillBar(12);
+                    this.milestone.fillBar(40);
                 }
                 allAnimationPromises.push(this.handleSpecialRow(matchResult));
                 tilesToRemove.push(...matchResult.tiles);
                 break;
             case 'special-column':
                 if (this.milestone) {
-                    this.milestone.fillBar(12);
+                    this.milestone.fillBar(50);
                 }
                 allAnimationPromises.push(this.handleSpecialColumn(matchResult));
                 tilesToRemove.push(...matchResult.tiles);
                 break;
             case 'matchT':
                 if (this.milestone) {
-                    this.milestone.fillBar(8);
+                    this.milestone.fillBar(80);
                 }
                 allAnimationPromises.push(this.handleMatchT(matchResult));
                 if (matchResult.centerTile) {
@@ -1067,7 +1145,7 @@ async removeTiles(matchResults: MatchResult[]): Promise<void> {
                 break;
             case 'matchL':
                 if (this.milestone) {
-                    this.milestone.fillBar(6);
+                    this.milestone.fillBar(60);
                 }
                 allAnimationPromises.push(this.handleMatchL(matchResult));
                 if (matchResult.centerTile) {
@@ -1077,7 +1155,7 @@ async removeTiles(matchResults: MatchResult[]): Promise<void> {
                 break;
             case 'match4':
                 if (this.milestone) {
-                    this.milestone.fillBar(5);
+                    this.milestone.fillBar(50);
                 }
                 allAnimationPromises.push(this.handleMatch4(matchResult));
                 if (matchResult.centerTile) {
@@ -1087,7 +1165,7 @@ async removeTiles(matchResults: MatchResult[]): Promise<void> {
                 break;
             case 'match5':
                 if (this.milestone) {
-                    this.milestone.fillBar(10);
+                    this.milestone.fillBar(40);
                 }
                 allAnimationPromises.push(this.handleMatch5(matchResult));
                 if (matchResult.centerTile) {
@@ -1099,7 +1177,7 @@ async removeTiles(matchResults: MatchResult[]): Promise<void> {
                 break;
             default:
                 if (this.milestone) {
-                    this.milestone.fillBar(3);
+                    this.milestone.fillBar(50);
                 }
                 allAnimationPromises.push(this.handleMatch3(matchResult));
                 tilesToRemove.push(...matchResult.tiles);
@@ -1117,19 +1195,39 @@ async removeTiles(matchResults: MatchResult[]): Promise<void> {
         this.TilePool!.Deactivate(tile);
     }
 }
-
-// 4. Sửa method handleSpecialCandy để animation mượt hơn
+private async pulseAllAffectedTiles(tiles: Tile[]): Promise<void> {
+    const pulsePromises: Promise<void>[] = [];
+    
+    tiles.forEach((tile, index) => {
+        pulsePromises.push(new Promise<void>((resolve) => {
+            setTimeout(() => {
+                tween(tile.node)
+                    .to(0.2, { scale: new Vec3(1.3, 1.3, 1.3) }, { easing: 'quadOut' })
+                    .to(0.2, { scale: new Vec3(1.0, 1.0, 1.0) }, { easing: 'quadIn' })
+                    .to(0.2, { scale: new Vec3(1.2, 1.2, 1.2) }, { easing: 'quadOut' })
+                    .to(0.2, { scale: new Vec3(1.0, 1.0, 1.0) }, { easing: 'quadIn' })
+                    .call(() => resolve())
+                    .start();
+            }, index * 50);
+        }));
+    });
+    
+    await Promise.all(pulsePromises);
+}
 private async handleSpecialCandy(matchResult: MatchResult): Promise<void> {
     console.log('Special candy Effect activated!');
 
     const promises: Promise<void>[] = [];
     const centerCoords = matchResult.specialActivation?.centerPosition || { x: 0, y: 0 };
-
+    const isChocolateEffect = matchResult.centerTile && 
+                             this.isChocolateTile(matchResult.centerTile.getTileType());
+                             if (isChocolateEffect) {
+        await this.pulseAllAffectedTiles(matchResult.tiles);
+    }
     for (let i = 0; i < matchResult.tiles.length; i++) {
         const tile = matchResult.tiles[i];
         const coords = this.getTileCoords(tile);
         
-        // Tính khoảng cách từ center để tạo hiệu ứng lan tỏa
         const distance = Math.abs(coords.x - centerCoords.x) + Math.abs(coords.y - centerCoords.y);
 
         promises.push(new Promise<void>((resolve) => {
@@ -1138,7 +1236,7 @@ private async handleSpecialCandy(matchResult: MatchResult): Promise<void> {
                 setTimeout(() => {
                     resolve();
                 }, 300);
-            }, distance * 80); // Hiệu ứng lan tỏa
+            }, distance * 80); 
         }));
     }
 
